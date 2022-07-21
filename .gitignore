@@ -3,3 +3,4 @@ dist/
 hub-agent-traefik
 acps/
 certs/
+.env

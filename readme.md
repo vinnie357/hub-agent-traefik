@@ -50,3 +50,81 @@ OPTIONS:
    --traefik.docker.swarm-mode         Activate Traefik Docker Swarm Mode (default: false) [$TRAEFIK_DOCKER_SWARM_MODE]
    --help, -h                          show help (default: false)
 ```
+
+
+## mods
+```bash
+
+make
+# add missing provider
+add consulcatalog provider files from https://github.com/traefik/traefik/
+# get missing dependancies 
+go mod tidy
+# run lint/build
+make aka : default: clean lint test build
+
+
+# changes
+traefik.consulCatalog.namespace
+traefik.consulCatalog.exposedByDefault
+traefik.consulCatalog.cache
+traefik.consulCatalog.watch
+traefik.consulCatalog.endpoint.address
+traefik.consulCatalog.endpoint.scheme
+traefik.consulCatalog.endpoint.token
+traefik.consulCatalog.endpoint.datacenter
+
+#
+consulcatalog.ProviderBuilder 
+# test
+export HUB_TOKEN=mytoken
+export TRAEFIK_CONSULCATALOG_ENDPOINT_TOKEN=mytoken
+#export TRAEFIK_CONSULCATALOG_NAMESPACE="default"
+export TRAEFIK_CONSULCATALOG_WATCH=true
+export TRAEFIK_CONSULCATALOG_CACHE=true
+export TRAEFIK_CONSULCATALOG_ENDPOINT_DATACENTER="dc1"
+export TRAEFIK_CONSULCATALOG_ENDPOINT_ADDRESS="http://localhost:8500"
+export TRAEFIK_CONSULCATALOG_ENDPOINT_SCHEME="http"
+
+
+# consul
+docker run \
+-d \
+--name=consul \
+-p 8500:8500 \
+-p 8600:8600/udp \
+consul agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0
+# test
+curl localhost:8500/v1/catalog/nodes | jq .
+# traefik
+docker run 
+-d \
+--name traefik \
+-p 80:80 \
+-p 9900:9900 \
+-p 9901:9901 \
+-p 8080:8080 \
+traefik:v2.7 \
+--experimental.hub=true \
+--hub.tls.insecure=true \
+--metrics.prometheus.addrouterslabels=true \
+--api.dashboard=true
+
+# agent
+hub-agent-traefik run \
+--auth-server.advertise-url=http://localhost:8001 \
+--auth-server.listen-addr=0.0.0.0:8001 \
+--traefik.host localhost \
+--traefik.tls.insecure true 
+
+
+# --traefik.consulCatalog.namespace "default" \
+# --traefik.consulcatalog.cache true \
+# --traefik.consulcatalog.watch true \
+# --traefik.consulCatalog.endpoint.datacenter "terraform-consul-dev" \
+# --traefik.consulCatalog.endpoint.address "https://myconsul" \
+# --traefik.consulCatalog.endpoint.scheme "https" \
+# --traefik.consulcatalog.endpoint.token "1234"
+
+
+```

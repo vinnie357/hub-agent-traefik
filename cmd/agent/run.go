@@ -33,6 +33,7 @@ import (
 	"github.com/traefik/hub-agent-traefik/pkg/logger"
 	"github.com/traefik/hub-agent-traefik/pkg/platform"
 	"github.com/traefik/hub-agent-traefik/pkg/provider"
+	"github.com/traefik/traefik/v2/pkg/provider/consulcatalog"
 	"github.com/traefik/hub-agent-traefik/pkg/topology"
 	topostore "github.com/traefik/hub-agent-traefik/pkg/topology/store"
 	"github.com/traefik/hub-agent-traefik/pkg/traefik"
@@ -182,6 +183,51 @@ func newRunCmd() runCmd {
 				Usage:   "Insecure skip verify",
 				EnvVars: []string{strcase.ToSNAKE(flagTraefikDockerTLSInsecureSkipVerify)},
 			},
+			//  add consulCatalog options
+			&cli.StringFlag{
+				Name:    flagTraefikConsulCatalogNamespace,
+				Usage:   "Consul Namespace to search",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogNamespace)},
+			},
+			&cli.BoolFlag{
+				Name:    flagTraefikConsulCatalogExposedByDefault,
+				Usage:   "exposedByDefault services",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogExposedByDefault)},
+				Value:   false,
+			},
+			&cli.BoolFlag{
+				Name:    flagTraefikConsulCatalogCache,
+				Usage:   "cache consul services",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogCache)},
+				Value:   false,
+			},
+			&cli.BoolFlag{
+				Name:    flagTraefikConsulCatalogWatch,
+				Usage:   "watch consul services for changes",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogWatch)},
+				Value:   false,
+			},
+			&cli.StringFlag{
+				Name:    flagTraefikConsulCatalogEndpointAddress,
+				Usage:   "Consul url to connect to https://consul:port",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogEndpointAddress)},
+			},
+			&cli.StringFlag{
+				Name:    flagTraefikConsulCatalogEndpointScheme,
+				Usage:   "Consul protcol scheme http:https",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogEndpointScheme)},
+				Value:   "http",
+			},
+			&cli.StringFlag{
+				Name:    flagTraefikConsulCatalogEndpointDatacenter,
+				Usage:   "Consul datacenter",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogEndpointDatacenter)},
+			},
+			&cli.StringFlag{
+				Name:    flagTraefikConsulCatalogEndpointToken,
+				Usage:   "Consul service account token",
+				EnvVars: []string{strcase.ToSNAKE(flagTraefikConsulCatalogEndpointToken)},
+			},
 		},
 	}
 }
@@ -255,6 +301,15 @@ func (r runCmd) runAgent(cliCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("create certificate client: %w", err)
 	}
+	consulCatalogOptions := createConsulCataglogOptions(cliCtx)
+
+	fmt.Printf("create consulcatalog configuration: %+v\n", consulCatalogOptions.Configuration)
+	fmt.Printf("create consulcatalog endpoint: %+v\n", consulCatalogOptions.Configuration.Endpoint)
+
+	// consulCatalogClient, err := consulcatalog.createClient(consulCatalogOptions)
+	// if err != nil {
+	// 	return fmt.Errorf("create consulcatalog client: %w", err)
+	// }
 
 	dcOpts := createDockerClientOpts(cliCtx)
 
@@ -366,6 +421,25 @@ func createDockerClientOpts(cliCtx *cli.Context) provider.DockerClientOpts {
 	}
 
 	return dcOpts
+}
+func createConsulCataglogOptions(cliCtx *cli.Context) consulcatalog.ProviderBuilder {
+	fmt.Printf("create config options: %+v\n", cliCtx.String(flagTraefikConsulCatalogNamespace))
+	consulCatalogOptions := consulcatalog.ProviderBuilder{
+		Namespace: cliCtx.String(flagTraefikConsulCatalogNamespace),
+	}
+	consulCatalogOptions.Configuration = consulcatalog.Configuration{
+		Cache: cliCtx.Bool(flagTraefikConsulCatalogCache),
+		Watch: cliCtx.Bool(flagTraefikConsulCatalogWatch),
+		ExposedByDefault: cliCtx.Bool(flagTraefikConsulCatalogExposedByDefault),
+	}
+	consulCatalogOptions.Configuration.Endpoint = &consulcatalog.EndpointConfig{
+		Address: cliCtx.String(flagTraefikConsulCatalogEndpointAddress),
+		Scheme: cliCtx.String(flagTraefikConsulCatalogEndpointScheme),
+		DataCenter: cliCtx.String(flagTraefikConsulCatalogEndpointDatacenter),
+		Token: cliCtx.String(flagTraefikConsulCatalogEndpointToken),
+	}
+
+	return consulCatalogOptions
 }
 
 func listenDocker(ctx context.Context, dockerProvider ProviderWatcher, store *topostore.Store, clusterID string) error {
