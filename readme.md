@@ -94,10 +94,17 @@ docker run \
 -p 8500:8500 \
 -p 8600:8600/udp \
 consul agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0
+docker run \
+-d \
+--network traefik-hub \
+--name=consul-hub \
+-p 8501:8500 \
+-p 8601:8600/udp \
+consul agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0
 # test
 curl localhost:8500/v1/catalog/nodes | jq .
 # traefik
-docker run 
+docker run \
 -d \
 --name traefik \
 -p 80:80 \
